@@ -1,5 +1,4 @@
 import sqlite3
-from types import GeneratorType
 connection = sqlite3.connect("quiplash.db")
 cursor = connection.cursor()
 
@@ -7,6 +6,8 @@ def create_table():
     with open("create_table.sql") as sql_file:
         sql_as_string = sql_file.read()
         cursor.executescript(sql_as_string)
+
+create_table()
 
 def pull_questions():
     with open("get_questions.sql") as sql_file:

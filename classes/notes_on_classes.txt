@@ -1,0 +1,17 @@
+class Vehicle: # This is the class name and where we define that we are creating a class.
+
+   # instance attributes as defined in the __init__ method #This is a comment
+   def __init__(self, v_color, v_make, v_model): #This is the dunder init function that is special. It is called to initialize a class and establish class attributes when the class is created.
+      self.color = v_color # This is the initialization of the color attribute, defined as v_color
+      self.make = v_make # This is the initialization of the make attribute, defined as v_make
+      self.model = v_model # This is the initialization of the model attribute, defined as v_model
+      self.speed = 0 # This is the initialization of a speed attribute, that is given a default value of 0
+
+   # instance method
+   def drive(self, v_speed): # This is an instance within the class. It is given parameters that allow us to call the instance and give it a value, in this case speed.
+      self.speed = v_speed # The speed attribute is now given a variable that we can access and give a different value to
+      return f"{self.color} {self.make} {self.model} driving at {self.speed}" # This return statement is what the instance will return when called, and can access any attributes of the class object we created.
+
+   def stop(self): #This is another instance of within the class, which is a function that can give us access to class attributes
+      self.speed = 0 #Here we set the attribute of speed to 0 simply by accessing "self"
+      return f"{self.color} {self.make} {self.model} stopping" #This again is the return statement of the class instance, which is returned when the instance is called. (It can include any attribute from the class)
