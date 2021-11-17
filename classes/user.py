@@ -64,13 +64,55 @@ class User:
         rows = cursor.execute(sql_1, user_id).fetchone()
         return print(rows)
 
+class Organization(User):
+    def __init__(self, org_id, name, city, state):
+        self.org_id = org_id
+        self.name = name
+        self.city = city
+        self.state = state
+
+    def show_organization(self):
+        return print(
+            f"""
+            Name: {self.name}
+            City: {self.city}
+            State: {self.state}
+            """
+        )
+    
+    def add_org(self):
+        create_org = """
+            INSERT INTO Organizations (
+                org_id, name, city, state
+            )
+            VALUES (
+                ?,?,?,?
+            )
+            """
+        list_of_values = self.org_id, self.name, self.city, self.state
+        return cursor.execute(create_org, list_of_values)
+
+    
+    def add_user(self):
+        jimmy = User(2, "Jimmy", "John", "Cleveland", "OH", "jimmy@jimmy.com", "123", "1/23/2014", 30, "male", 2)
+        jimmy.create_user()
+
+    
+        
+
+
+
 cooper = User(1, "Cooper", "Tingey", "Provo", "UT", "coopergmail.com", "123", "11/13/2021", 23, "male")
 
+cooper_company = Organization(2, "Cooper's cooler company", "Provo", "Utah")
+
+cooper_company.add_org()
 # cooper.show_details()
 # cooper.create_user()
 # cooper.load_user()
 # cooper.update_email()
 # cooper.change_password()
+# cooper.check_pw_match()
 
 
 

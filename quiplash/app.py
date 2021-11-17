@@ -7,7 +7,7 @@ def create_table():
         sql_as_string = sql_file.read()
         cursor.executescript(sql_as_string)
 
-create_table()
+# create_table()
 
 def pull_questions():
     with open("get_questions.sql") as sql_file:
