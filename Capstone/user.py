@@ -24,6 +24,8 @@ class User:
         self.first_name = input("Enter first name: ")
         self.last_name = input("Enter last name: ")
         self.email = input("Enter email: ")
+        while self.check_email(self.email) == False:
+            self.email = input("Enter a different email: ")
         self.password = input("Enter password: ")
         hashed_password = User.hash_password(self, self.password)
         self.phone = input("Enter phone number: ")
@@ -41,7 +43,8 @@ class User:
         values = self.first_name, self.last_name, self.email, hashed_password, self.phone, self.date_created, self.hire_date, self.user_type
         cursor.execute(sql_statement, values)
         connection.commit()
-        # Make sure tou can't sign up with the same email as someone else!
+        print("\nUser created successfully.")
+        print("\nPlease log in to your account.\n")
         return self.login()
     
     def hash_password(self, password):
@@ -86,6 +89,7 @@ class User:
         2. View my assessments & scores
         3. View average competency scores
         4. Edit my information
+        5. Read a CSV file
         """)
         select = input("Select the number of the action you would like to take. (q to quit) Enter: ")
         if select == "1":
@@ -97,6 +101,8 @@ class User:
             return self.view_competency_averages()
         elif select == "4":
             return self.edit_user_info(self.user_id)
+        elif select == "5":
+            return self.read_csv_assessment_results()
         elif select == 'q':
             return exit()
         else:
@@ -106,6 +112,7 @@ class User:
         sql_statement = """
             SELECT competency_id, name
             FROM Competency
+            WHERE active = 1
         """
         competencies = cursor.execute(sql_statement).fetchall()
         print("\nCompetency ID    Name/Description")
@@ -119,6 +126,7 @@ class User:
             FROM Assessment a, Competency c
             JOIN Competency
             ON a.competency_id = c.competency_id
+            WHERE a.active = 1
         """
         assessments = cursor.execute(sql_statement).fetchall()
         print("\nAssessment ID  Competency            Name/Description")
@@ -132,7 +140,6 @@ class User:
             WHERE user_id = ?
         """
         user_info = cursor.execute(sql_statement, (user_id,)).fetchone()
-        print(user_info)
         print(f"\n1. First Name: {user_info[0]}")
         print(f"2. Last Name: {user_info[1]}")
         print(f"3. Email: {user_info[2]}")
@@ -160,6 +167,8 @@ class User:
             print("\nLast name successfully changed")
         elif select == "3":
             new_value = input("Enter your new email. Enter: ")
+            while self.check_email(new_value) == False:
+                new_value = input("\nEnter a different email. Enter: ")
             edit_statement = """
                 UPDATE User
                 SET email = ?
@@ -192,6 +201,18 @@ class User:
         connection.commit()  
         return self.reroute()
 
+    def check_email(self, email):
+        sql = "SELECT email FROM User"
+        emails = cursor.execute(sql).fetchall()
+        emails_list = []
+        for e in emails:
+            emails_list.append(e[0])
+        if email in emails_list:
+            print("\nEmail already in use. ")
+            return False
+        else:
+            return True
+
     def view_my_assessments(self):
         sql_statement = """
         SELECT ar.user_id, (u.first_name || " " || u.last_name), a.name, ar.score
@@ -201,16 +222,17 @@ class User:
         JOIN Assessment a
         ON a.assessment_id = ar.assessment_id
         WHERE u.user_id = ?
+        AND ar.active = 1
         """
         assessments = cursor.execute(sql_statement, (self.user_id,)).fetchall()
         print("User ID   User Name            Assessment Name                Score")
         for assessment in assessments:
             print(f"{assessment[0]:<9} {assessment[1]:<20} {assessment[2]:<30} {assessment[3]}")
-        write_to_csv = input("Would you like to write this info to a CSV file? (y)es/(n)o. Enter: ")
+        write_to_csv = input("\nWould you like to write this info to a CSV file? (y)es/(n)o. Enter: ")
         if write_to_csv == "y":
             headers = ["User ID", "User Name", "Assessment Name", "Score"]
             self.write_to_csv(headers, assessments)
-            print("CSV file written successfully.")
+            print("CSV file written successfully.\n")
             return self.reroute()
         else:
             return self.reroute()
@@ -221,6 +243,7 @@ class User:
             FROM Competency c, Assessment_Results ar
             WHERE ar.user_id = ?
             AND c.competency_id = ar.competency_id
+            AND c.active = 1
             GROUP BY ar.competency_id
         """
         averages = cursor.execute(sql_statement, (self.user_id,)).fetchall()
@@ -243,6 +266,15 @@ class User:
             for row in data:
                 writer.writerow(row)
         return
+
+    def read_csv_assessment_results(self):
+        csv_file = input("\nEnter the name of your csv file (be exact, include '.csv'). File must have 4 columns. Enter: ")
+        with open(csv_file, 'r') as csv:
+            data = csv.readlines()
+            for row in data:
+                row = row.split(',')
+                print(f"{row[0]:<15}{row[1]:<15}{row[2]:<30}{row[3]}")
+        return self.reroute()
 
     def reroute(self):
         option = input("\nWould you like to take another action or quit? (a for action, q to quit). Enter: ")
@@ -274,15 +306,12 @@ class Manager(User):
         print("""
         1. Users
         2. Competencies
-        3. Reports
         """)
         select = input("Select the number of the section you would like to access. (q to quit) Enter: ")
         if select == "1":
             return self.view_user_actions()
         elif select == "2":
             return self.view_competency_actions()
-        elif select == "3":
-            return self.view_reports_actions()
         elif select == 'q':
             return exit()
         else:
@@ -295,6 +324,7 @@ class Manager(User):
             JOIN Competency
             ON a.competency_id = c.competency_id
 			WHERE c.competency_id = ?
+            AND a.active = 1
         """
         assessments = cursor.execute(sql_statement, (competency_id,)).fetchall()
         print("\nAssessment ID  Competency          Name/Description")
@@ -306,8 +336,7 @@ class Manager(User):
         print("""
         1. Create User/Manager
         2. View all users
-        3. Edit a user
-        4. Search user by first/last name
+        3. Search user by first/last name
         """)
         select = input("Select the number of the action you would like to take (q to quit). Enter: ")
         if select == "1":
@@ -315,20 +344,37 @@ class Manager(User):
         elif select == "2":
             return self.view_users()
         elif select == "3":
-            return User.edit_user_info()
-        elif select == "4":
             return self.search_user()
         elif select == "q":
             return exit()
         else:
-            self.view_user_actions()    
+            self.view_user_actions()   
+
+    def delete_user(self, user_id):
+        sql1 = """
+        UPDATE User
+        SET active = 0
+        WHERE user_id = ?
+        """
+        sql2 = """
+        UPDATE Assessment_Results
+        SET active = 0
+        WHERE user_id = ?;
+        """
+        cursor.execute(sql1, (user_id,))
+        cursor.execute(sql2, (user_id,))
+        connection.commit()  
+        print("User successfully deleted.")
+        return self.reroute()
 
     def view_competency_actions(self):
         print("""
         1. Create a competency
         2. Edit competencies
-        3. Create an assessment
-        4. Edit assessments
+        3. Delete a competency
+        4. Create an assessment
+        5. Edit assessments
+        6. Delete an assessment
         """)
         select = input("Select the number of the action you would like to take (q to quit). Enter: ")
         if select == "1":
@@ -336,29 +382,68 @@ class Manager(User):
         elif select == "2":
             return self.edit_competency()
         elif select == "3":
-            return self.create_assessment()
+            return self.delete_competency()
         elif select == "4":
+            return self.create_assessment()
+        elif select == "5":
             return self.edit_assessment()
+        elif select == "6":
+            return self.delete_assessment()
         elif select == "q":
             return exit()
         else:
             return self.view_competency_actions()
 
-    def view_reports_actions(self):
-        print("""
-        Reports contain a summary of users and their competency levels for a given competency
+    def delete_assessment(self):
+        self.view_assessments()
+        select = input("Select the assessment you would like to delete. Enter: ")
+        sql1 = """
+        UPDATE Assessment
+        SET active = 0
+        WHERE assessment_id = ?
+        """
+        sql2 = """
+        UPDATE Assessment_Results
+        SET active = 0
+        WHERE assessment_id = ?;
+        """
+        cursor.execute(sql1, (select,))
+        cursor.execute(sql2, (select,))
+        connection.commit()  
+        print("Assessment successfully deleted.")
+        return self.reroute()
 
-        1. View All Users report 
-        2. View Individual User report
-
-        """)
-
-        return
+    def delete_competency(self):
+        self.view_competencies()
+        select = input("Select the competency you would like to delete. Enter: ")
+        sql1 = """
+        UPDATE Competency
+        SET active = 0
+        WHERE competency_id = ?;
+        """
+        sql2 = """
+        UPDATE Assessment
+        SET active = 0
+        WHERE competency_id = ?;
+        """
+        sql3 = """
+        UPDATE Assessment_Results
+        SET active = 0
+        WHERE competency_id = ?;
+        """
+        cursor.execute(sql1, (select,))
+        cursor.execute(sql2, (select,))
+        cursor.execute(sql3, (select,))
+        connection.commit()  
+        print("Competency successfully deleted.")
+        return self.reroute()
 
     def add_manager(self):
         self.first_name = input("Enter first name: ")
         self.last_name = input("Enter last name: ")
         self.email = input("Enter email: ")
+        while User.check_email(self, self.email) == False:
+            self.email = input("\nEnter a different email. Enter: ")
         self.password = input("Enter password: ")
         hashed_password = User.hash_password(self, self.password)
         self.phone = input("Enter phone number: ")
@@ -383,6 +468,7 @@ class Manager(User):
         sql_statement = """
             SELECT user_id, first_name, last_name, phone, email
             FROM User
+            WHERE active = 1
         """
         users = cursor.execute(sql_statement).fetchall()
         print("\nUser ID   First Name       Last Name        Phone        Email")
@@ -396,6 +482,7 @@ class Manager(User):
             SELECT user_id, first_name, last_name, phone, email FROM User
             WHERE first_name LIKE ('%' || ? || '%')
             OR last_name LIKE ('%' || ? || '%')
+            AND active = 1
         """
         values = search, search
         filtered_users = cursor.execute(sql_statement, values).fetchall()
@@ -410,23 +497,25 @@ class Manager(User):
             1. Edit User
             2. View All User Assessments and Competencies
             3. Give a User a score on an assessment
-            4. Back to main menu
+            4. Delete User
+            5. Back to main menu
         """)
         action = input("Select action number (q to quit). Enter: ")
         if action == "1":
             return User.edit_user_info(self, user_id)
         elif action == "2":
-            #This one should link me to the user and the score for his/her assessments
             return self.view_all_user_assessments()
         elif action == "3":
-            #This should link me to the function that gives a user a score
             self.give_user_a_competency(user_id)
             return
         elif action == "4":
+            self.delete_user(user_id)
+        elif action == "5":
             return self.show_actions()
         elif action == "q":
             return quit()
-        return
+        else:
+            return self.select_action_for_user()
 
     def create_compentency(self):
         name = input("Enter the name of the competency you'd like to create. Enter: ")
@@ -447,8 +536,8 @@ class Manager(User):
 
     def edit_competency(self):
         User.view_competencies(self)
-        select = input("Select the ID of the competency you would like to edit. Enter: ")
-        new_name = input("Enter the new name of the compency you'd like to edit. Enter: ")
+        select = input("\nSelect the ID of the competency you would like to edit. Enter: ")
+        new_name = input("\nEnter the new name of the compency you'd like to edit. Enter: ")
         sql_statement = """
             UPDATE Competency
             SET name = ?
@@ -496,13 +585,14 @@ class Manager(User):
 
     def give_user_a_competency(self, user_id):
         User.view_competencies(self)
-        select_competency = input("Select a competency ID to view its assessments. Enter: ")
+        select_competency = input("\nSelect a competency ID to view its assessments. Enter: ")
         self.view_competency_assessments(select_competency)
-        select_assessment = input("Select an assessment ID to give the user a score for the assessment. Enter: ")
-        assessment_score = int(input("What did the user score on this assessment (0-5)? Enter: "))
+        select_assessment = input("\nSelect an assessment ID to give the user a score for the assessment. Enter: ")
+        assessment_score = int(input("\nWhat did the user score on this assessment (0-5)? Enter: "))
         sql = """
             SELECT competency_id FROM Assessment
             WHERE assessment_id = ?
+            AND active = 1
         """
         competency_id = cursor.execute(sql, (select_assessment,)).fetchone()
         sql_statement = """
@@ -535,20 +625,20 @@ class Manager(User):
         ON  ar.user_id = u.user_id
         JOIN Assessment a
         ON a.assessment_id = ar.assessment_id
+        WHERE ar.active = 1
         """
         assessments = cursor.execute(sql_statement).fetchall()
         print("User ID   User Name            Assessment Name                Score")
         for assessment in assessments:
-            print(f"{assessment[0]:<9} {assessment[1]:<20} {assessment[2]:<30} {assessment[3]}")
+            print(f"{assessment[0]:<9} {assessment[1]:<20} {assessment[2][:28]:<30} {assessment[3]}")
         write_to_csv = input("\nWould you like to write this info to a CSV file? (y)es/(n)o. Enter: ")
         if write_to_csv == "y":
             headers = ["User ID", "User Name", "Assessment Name", "Score"]
             self.write_to_csv(headers, assessments)
-            print("CSV file written successfully.")
+            print("CSV file written successfully. Name of file is user_assessment_scores.csv. ")
             return self.reroute()
         else:
             return self.reroute()
 
-cooper = Manager()
-
+cooper = Manager() 
 connection.commit()  
